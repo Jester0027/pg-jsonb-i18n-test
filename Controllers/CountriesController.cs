@@ -18,12 +18,25 @@ public class CountriesController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
+        [FromQuery] string? searchTerm = null,
         [FromHeader(Name = "x-locale")] string? locale = null
     )
     {
         locale ??= "fr";
-        var result = await _dbContext.Countries
-            .AsNoTracking()
+        var query = _dbContext.Countries.AsNoTracking();
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            query = query.Where(x =>
+                (
+                    x.Name.RootElement.GetProperty(locale).GetString() ??
+                    x.Name.RootElement.GetProperty("fr").GetString()
+                )!
+                .ToLower()
+                .Contains(searchTerm.Trim().ToLower()));
+        }
+
+        var result = await query
             .Select(x => new CountryViewModel
             {
                 Id = x.Id,
